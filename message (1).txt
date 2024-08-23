@@ -1,0 +1,137 @@
+
+bot:autoManager().mod.leaveTheWorld = false
+local function donet(x,y,itemid,count)
+    bot:sendPacket("action|dialog_return\ndialog_name|donation_box_edit\ntilex|"..x.."|\ntiley|"..y.."|\nitemid|"..itemid,2)
+    sleep(1000)
+    bot:sendPacket("action|dialog_return\ndialog_name|give_item\nitemID|"..itemid.."|\ntilex|"..x.."|\ntiley|"..y.."|\nbuttonClicked|give\n\ncount|"..count.."\nsign_text|",2)
+    sleep(1200)
+end
+local function sendWebhook(text,count,Item,WH)
+    local RequestINFO={}
+    RequestINFO.json = true
+    RequestINFO.url=WH
+    RequestINFO.method=POST
+    RequestINFO.postData = 
+    [[
+        {
+          "embeds": [
+            {   
+                "title": "Donation ",
+                "description": "GrowID: ]]..text..[[\\nDeposit: ]]..count..[[ ]]..Item..[[",
+              "color": "]] .. math.random(0, 16777215) .. [[",
+              "footer": {
+                "text": "Donation Log]]..(os.date("!%a %b %d, %Y at %I:%M %p", os.time() + 7 * 60 * 60))..[[",
+                "icon_url": ""
+              }
+            }
+          ]
+        }
+    ]]
+    x = httpReq(RequestINFO)
+    if x.success then
+        log("Response Body : ",x.body)
+        log("Response Http Status Code : ",x.httpCode)
+    else
+        log("Request Failed Error Msg : ",x.failInfo)
+    end
+end
+
+local function Save()
+    while bot:getWorld().name:upper() ~= "EXIT" do
+        bot:warp("EXIT")        
+        for i = 1,10 do
+            sleep(1000)
+            if  bot:getWorld().name:upper() == "EXIT" then
+                break
+            end
+        end
+    end
+    while bot:getWorld().name:upper() ~= WSave:upper()  do
+        bot:warp(WSave.."|"..IDSave)
+        for i = 1,10 do
+            sleep(1000)
+            if  bot:getWorld().name:upper() == WSave:upper() then
+                break
+            end
+        end
+    end
+    
+    for _, tile in pairs(bot:getTiles()) do
+        if tile.fg == 1452 then
+            if (bot:getItemCount(242) > 0) or (bot:getItemCount(1796) > 0) or (bot:getItemCount(7188) > 0) then
+                bot:wrenchTile(tile.x,tile.y)
+                sleep(200)
+                if (bot:getItemCount(7188) > 0) then
+                    donet(tile.x,tile.y,7188,bot:getItemCount(7188))
+                elseif (bot:getItemCount(242) > 0) then
+                    donet(tile.x,tile.y,242,bot:getItemCount(242))
+                elseif (bot:getItemCount(1796) > 0) then
+                    donet(tile.x,tile.y,1796,bot:getItemCount(1796))
+                end
+            end
+        end
+    end
+end
+
+local function onVarlist(varlist)
+    if varlist[0]=="OnConsoleMessage" then
+        if varlist[1]:find("Collected `w") and varlist[1]:find("``") then
+            local count,name = varlist[1]:match("Collected `w(%d+) (.+)``.``")
+            if name == "World Lock" then
+                log(name..":"..count)
+                sendWebhook(user,count,name,linkWebhook)
+                Put = true
+            elseif name == "Diamond Lock" then
+                log(name..":"..count)
+                sendWebhook(user,count,name,linkWebhook)
+                Put = true
+            elseif name == "Blue Gem Lock" then
+                log(name..":"..count)
+                sendWebhook(user,count,name,linkWebhook)
+                Put = true
+            end
+        end
+    -- elseif varlist[0] == "OnSpawn" then
+    --     local a = varlist[1]
+    --     local name = string.sub(a:match("name|`[%w%d]+`([^`]+)`"),2)
+    --     print(name)
+    --     if name:upper() ~= user:upper() then
+    --         bot:say("an "..name)
+    --     end
+    -- else
+    --     log(varlist[0]..":"..varlist[1])
+    end
+end
+
+
+bot:addHook(onVarlist,varlist)
+while bot:getWorld().name:upper() ~= WD:upper()  do
+    bot:warp(WD)
+    for i = 1,10 do
+        sleep(1000)
+        if  bot:getWorld().name:upper() == WD:upper() then
+            break
+        end
+    end
+end
+bot:say("/uba")
+sleep(1000)
+bot:autoCollect(3, true)
+for i = 1,600 do    
+    sleep(100)
+end
+bot:autoCollect(3, false)
+
+local function extract_username(input)
+    local pattern = "`%w([%a%d]+)`"
+    local username = input:match(pattern)
+    return username
+end
+for _,player in pairs(bot:getPlayers()) do
+    bot:say("/ban "..extract_username(player.name))
+    sleep(200)
+end
+if Put then
+    Save()
+    bot:autoManager().mod.leaveTheWorld = true
+end
